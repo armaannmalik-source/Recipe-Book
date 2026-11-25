@@ -124,6 +124,25 @@
     </article>
   </dialog>
 
+  <dialog id="cookingDialog" class="dialog cooking-dialog">
+    <section class="dialog-card cooking-card">
+      <button type="button" class="close-button detail-close" id="closeCooking" aria-label="Close">×</button>
+      <p class="eyebrow">COOKING MODE</p>
+      <h2 id="cookingTitle">Let's cook</h2>
+      <section class="checklist-panel">
+        <div class="cooking-section-heading"><h3>Ingredient checklist</h3><button type="button" class="text-button" id="resetChecklist">Reset checklist</button></div>
+        <p class="checklist-progress" id="checklistProgress">0 of 0 ingredients ready</p>
+        <div id="cookingIngredients" class="cooking-ingredients"></div>
+      </section>
+      <section class="step-panel">
+        <div class="cooking-section-heading"><h3>Instructions</h3><span id="stepCounter">Step 1 of 1</span></div>
+        <div class="step-progress-track"><div id="stepProgressBar"></div></div>
+        <p class="step-text" id="cookingStep"></p>
+        <div class="step-controls"><button type="button" class="secondary-button" id="previousStep">← Previous</button><button type="button" class="primary-button" id="nextStep">Next →</button></div>
+      </section>
+    </section>
+  </dialog>
+
   <dialog id="aboutDialog" class="dialog">
     <section class="dialog-card about-card">
       <button type="button" class="close-button detail-close" id="closeAbout" aria-label="Close">×</button>

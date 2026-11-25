@@ -3,6 +3,9 @@ const grid = $("recipeGrid");
 let recipes = [];
 let activeCategory = "All";
 let editingImage = null;
+let cookingRecipe = null;
+let cookingStepIndex = 0;
+let checkedIngredients = new Set();
 
 const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const lines = value => String(value || "").split(/\r?\n/).map(x => x.trim()).filter(Boolean);
@@ -115,8 +118,9 @@ function openDetails(id) {
   const recipe = recipes.find(r => r.id === id); if (!recipe) return;
   const baseServings=Math.max(1,Number(recipe.servings)||2);
   const image = recipe.image ? `<img src="${recipe.image}" alt="${escapeHTML(recipe.name)}">` : "✳";
-  $("detailContent").innerHTML = `<div class="detail-hero">${image}</div><div class="detail-body"><p class="eyebrow">${escapeHTML(recipe.category)} · ${escapeHTML(formatTime(recipe.time))}</p><h2>${escapeHTML(recipe.name)}</h2><div class="detail-actions"><button class="small-action" id="detailFavourite">${recipe.favourite ? "♥ Remove favourite" : "♡ Add to favourites"}</button><button class="small-action" id="detailEdit">Edit recipe</button><button class="small-action" id="detailDelete">Delete</button></div><div class="serving-tool"><label for="targetServings">Servings</label><input id="targetServings" type="number" min="1" max="100" step="1" value="${baseServings}"><span class="scale-note">Original recipe: ${baseServings} servings · quantities adjust automatically</span></div><h3>Ingredients</h3><ul class="scaled-ingredients" id="scaledIngredients">${lines(recipe.ingredients).map(x=>`<li>${escapeHTML(x)}</li>`).join("")}</ul><h3>Instructions</h3><ol>${lines(recipe.instructions).map(x=>`<li>${escapeHTML(x)}</li>`).join("")}</ol>${recipe.notes ? `<h3>Personal notes</h3><p class="notes">${escapeHTML(recipe.notes)}</p>` : ""}</div>`;
+  $("detailContent").innerHTML = `<div class="detail-hero">${image}</div><div class="detail-body"><p class="eyebrow">${escapeHTML(recipe.category)} · ${escapeHTML(formatTime(recipe.time))}</p><h2>${escapeHTML(recipe.name)}</h2><div class="detail-actions"><button class="small-action" id="detailFavourite">${recipe.favourite ? "♥ Remove favourite" : "♡ Add to favourites"}</button><button class="small-action" id="startCooking">▶ Cooking mode</button><button class="small-action" id="detailEdit">Edit recipe</button><button class="small-action" id="detailDelete">Delete</button></div><div class="serving-tool"><label for="targetServings">Servings</label><input id="targetServings" type="number" min="1" max="100" step="1" value="${baseServings}"><span class="scale-note">Original recipe: ${baseServings} servings · quantities adjust automatically</span></div><h3>Ingredients</h3><ul class="scaled-ingredients" id="scaledIngredients">${lines(recipe.ingredients).map(x=>`<li>${escapeHTML(x)}</li>`).join("")}</ul><h3>Instructions</h3><ol>${lines(recipe.instructions).map(x=>`<li>${escapeHTML(x)}</li>`).join("")}</ol>${recipe.notes ? `<h3>Personal notes</h3><p class="notes">${escapeHTML(recipe.notes)}</p>` : ""}</div>`;
   $("detailDialog").showModal();
+  $("startCooking").addEventListener("click", () => openCookingMode(recipe));
   $("targetServings").addEventListener("input", () => {
     const target=Math.max(1,Math.min(100,Number($("targetServings").value)||baseServings));
     const factor=target/baseServings;
@@ -128,6 +132,47 @@ function openDetails(id) {
     if (confirm(`Delete "${recipe.name}" from your Recipe Book?`)) { await RecipeDB.remove(id); $("detailDialog").close(); await refresh(); }
   });
 }
+
+function openCookingMode(recipe) {
+  cookingRecipe = recipe;
+  cookingStepIndex = 0;
+  checkedIngredients = new Set();
+  $("cookingTitle").textContent = recipe.name;
+  renderCookingIngredients();
+  renderCookingStep();
+  $("cookingDialog").showModal();
+}
+function renderCookingIngredients() {
+  const ingredients = lines(cookingRecipe?.ingredients || "");
+  $("cookingIngredients").innerHTML = ingredients.map((ingredient, index) => `
+    <label class="ingredient-check ${checkedIngredients.has(index) ? "checked" : ""}">
+      <input type="checkbox" data-ingredient="${index}" ${checkedIngredients.has(index) ? "checked" : ""}>
+      <span>${escapeHTML(ingredient)}</span>
+    </label>`).join("") || '<p class="form-hint">No ingredients listed.</p>';
+  $("checklistProgress").textContent = `${checkedIngredients.size} of ${ingredients.length} ingredients ready`;
+  $("cookingIngredients").querySelectorAll("input[data-ingredient]").forEach(input => {
+    input.addEventListener("change", () => {
+      const index = Number(input.dataset.ingredient);
+      if (input.checked) checkedIngredients.add(index); else checkedIngredients.delete(index);
+      renderCookingIngredients();
+    });
+  });
+}
+function renderCookingStep() {
+  const steps = lines(cookingRecipe?.instructions || "");
+  const total = Math.max(steps.length, 1);
+  cookingStepIndex = Math.max(0, Math.min(cookingStepIndex, total - 1));
+  $("stepCounter").textContent = `Step ${cookingStepIndex + 1} of ${total}`;
+  $("cookingStep").textContent = steps[cookingStepIndex] || "No instructions available.";
+  $("stepProgressBar").style.width = `${((cookingStepIndex + 1) / total) * 100}%`;
+  $("previousStep").disabled = cookingStepIndex === 0;
+  $("nextStep").textContent = cookingStepIndex === total - 1 ? "Finished ✓" : "Next →";
+  $("nextStep").disabled = cookingStepIndex === total - 1;
+}
+$("closeCooking").addEventListener("click", () => $("cookingDialog").close());
+$("resetChecklist").addEventListener("click", () => { checkedIngredients.clear(); renderCookingIngredients(); });
+$("previousStep").addEventListener("click", () => { cookingStepIndex--; renderCookingStep(); });
+$("nextStep").addEventListener("click", () => { cookingStepIndex++; renderCookingStep(); });
 
 function downloadBackup() {
   RecipeDB.getAll().then(all => {

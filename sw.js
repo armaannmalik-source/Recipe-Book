@@ -1,4 +1,4 @@
-const CACHE = "recipe-book-v3";
+const CACHE = "recipe-book-v4";
 const CORE = ["./", "./index.html", "./css/style.css", "./js/database.js", "./js/app.js", "./manifest.json", "./assets/icons/icon-192.png", "./assets/icons/icon-512.png"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)));
